@@ -1,0 +1,24 @@
+{
+  "name": "node_prep",
+  "version": "1.0.0",
+  "description": "interview",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "node --loader ts-node/esm --watch index.ts",
+    "generate": "node --loader ts-node/esm create-data.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Santiago Herrera",
+  "license": "ISC",
+  "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
+    "@tsconfig/node16": "^1.0.2",
+    "@types/node": "^18.15.9",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "csvtojson": "^2.0.10"
+  }
+}
