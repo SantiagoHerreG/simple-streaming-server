@@ -1,5 +1,5 @@
 import * as http from "http";
-import events from "events";
+import { EventEmitter } from "events";
 import fs from "fs";
 import csv from "csvtojson";
 import { Transform } from "stream";
@@ -8,29 +8,30 @@ import { pipeline as asyncPipeline } from "stream/promises";
 const hostname = '127.0.0.1';
 const port = 3000;
 
-const emitter = new events.EventEmitter();
+const emitter = new EventEmitter();
 
 const server = http.createServer((req, res) => {
    if (req.url === "/") {
-      emitter.emit("handleRequest", { a: "this is my event" });
+      emitter.emit("handleRequest", null);
    }
-   res.statusCode = 200;
-   res.setHeader("Content-type", "application/json")
-   emitter.on("wasEnded", function (events) {
-      console.log("this is event received");
-      console.log(events);
-      res.end(JSON.stringify(events));
+   emitter.on("wasEnded", function (event) {
+      console.log("Process ended");
+      if (!event.wasSuccess) {
+         res.statusCode = 500;
+         res.end("Error");
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-type", "application/json")
+      res.end(JSON.stringify(event.data));
    });
 });
-
 
 server.listen(port, hostname, () => {
    console.log(`Server running at http://${hostname}:${port}/`);
 });
 
-emitter.on("handleRequest", async function (events) {
-   console.log("this is event received");
-   console.log(events);
+emitter.on("handleRequest", async function (_) {
+   console.log("Handle stream");
    let countOriginal = 0;
    let countFilter = 0;
    let data: {
@@ -40,12 +41,12 @@ emitter.on("handleRequest", async function (events) {
       salary: number;
       isActive: boolean;
    }[] = [];
-   const stream = fs.createReadStream("./data/import.csv");
+   const readStream = fs.createReadStream("./data/import.csv");
 
    // const writeStream = fs.createWriteStream("./data/export.csv");
    const transform = new Transform({
       objectMode: true,
-      transform(chunk, encoding, callback) {
+      transform(chunk, _encoding, callback) {
          const user = {
             name: chunk.name,
             email: chunk.email,
@@ -73,17 +74,17 @@ emitter.on("handleRequest", async function (events) {
    // pipeline/promises instead of promisify(stream.pipeline)
    try {
       await asyncPipeline(
-         stream,
+         readStream,
          csv({ delimiter: " " }, { objectMode: true }),
          transform,
          filter,
          // data can be sent to a broker, api, db, etc.
       )
       console.log("finished", { countOriginal, countFilter });
-      emitter.emit("wasEnded", data);
+      emitter.emit("wasEnded", { wasSuccess: true, data });
    } catch (err) {
       console.error('Pipeline failed.', err);
-      emitter.emit("wasEnded", []);
+      emitter.emit("wasEnded", { wasSuccess: false, data: null });
    }
 
    // stream
